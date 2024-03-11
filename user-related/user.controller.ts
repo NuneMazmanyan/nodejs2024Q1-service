@@ -20,7 +20,7 @@ export class UserController {
 
     @Get()
     getUsers() {
-        return this.UserService.getUsers();
+        return this.UserService.getUsers().then();
     }
 
     @Post()

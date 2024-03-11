@@ -17,10 +17,10 @@ export class UserService {
 
     private async readUsers() {
         let fileContent: User[] = [];
-        // await fs.readFile(this.usersDirPath, (err, data)=>{
-        //     if (err) throw err;
-        //     fileContent.push(...JSON.parse(data.toString()).users)
-        // })
+        await fs.readFile(this.usersDirPath, (err, data)=>{
+            if (err) throw err;
+            fileContent.push(...JSON.parse(data.toString()).users)
+        })
         return fileContent;
     }
 
@@ -95,7 +95,7 @@ export class UserService {
     private checkUserId(id: string) {
         const user = this.users.find((user) => user.id === id);
         if (!user) {
-            throw new NotFoundException('This user is not exist');
+            throw new NotFoundException('User not exists');
         }
 
         return user;
