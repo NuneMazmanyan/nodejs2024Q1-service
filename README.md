@@ -8,7 +8,13 @@
 ## Downloading
 
 ```
-git clone {repository URL}
+clone this repository wiht branch `b develop_part2`
+
+
+git clone https://github.com/NuneMazmanyan/nodejs2024Q1-service
+
+
+checkout to develop/Docker-Database-ORM
 ```
 
 ## Installing NPM modules
@@ -16,6 +22,13 @@ git clone {repository URL}
 ```
 npm install
 ```
+
+## Specify Docker configurations
+
+write your own data in the `.env`
+start the docker containers `npm run docker:build:up`
+- start the test `npm run test`
+
 
 ## Running application
 
