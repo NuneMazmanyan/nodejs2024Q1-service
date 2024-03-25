@@ -15,22 +15,22 @@ import {TrackService} from "./track.service";
 
 @Controller('track')
 export class TrackController {
-    constructor(private readonly trackService: TrackService) {}
+    constructor(private readonly TrackServ: TrackService) {}
 
     @Get()
     getTracks() {
-        return this.trackService.getTracks();
+        return this.TrackServ.getTracks();
     }
 
     @Get(':id')
     getTrack(@Param('id', ParseUUIDPipe) id: string) {
-        return this.trackService.getTrackById(id);
+        return this.TrackServ.getTrack(id);
     }
 
     @Post()
     @HttpCode(201)
     create(@Body() trackDto: CreateTrackDto) {
-        return this.trackService.createTrack(trackDto);
+        return this.TrackServ.createTrack(trackDto);
     }
 
     @Put(':id')
@@ -39,12 +39,12 @@ export class TrackController {
         @Param('id', ParseUUIDPipe) id: string,
         @Body() updateTrackDto: UpdateTrackDto,
     ) {
-        return this.trackService.updateTrack(id, updateTrackDto);
+        return this.TrackServ.updateTrack(id, updateTrackDto);
     }
 
     @Delete(':id')
     @HttpCode(204)
     deleteTrack(@Param('id', ParseUUIDPipe) id: string) {
-        return this.trackService.deleteTrack(id);
+        return this.TrackServ.deleteTrack(id);
     }
 }
