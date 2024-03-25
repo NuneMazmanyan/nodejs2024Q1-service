@@ -11,46 +11,46 @@ import { FavoritesService } from './favorites.service';
 
 @Controller('favs')
 export class FavoritesController {
-    constructor(private readonly favoritesService: FavoritesService) {}
+    constructor(private readonly FavoritesServ: FavoritesService) {}
 
     @Get()
     getFavorites() {
-        return this.favoritesService.getFavorites();
+        return this.FavoritesServ.getFavorites();
     }
 
     @Post('album/:id')
     @HttpCode(201)
     addAlbum(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.addAlbum(id);
+        return this.FavoritesServ.addAlbum(id);
     }
 
     @Post('track/:id')
     @HttpCode(201)
     addTrack(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.addTrack(id);
+        return this.FavoritesServ.addTrack(id);
     }
 
     @Post('artist/:id')
     @HttpCode(201)
     addArtist(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.addArtist(id);
+        return this.FavoritesServ.addArtist(id);
     }
 
     @Delete('track/:id')
     @HttpCode(204)
     deleteTrack(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.deleteTrack(id);
+        return this.FavoritesServ.deleteTrack(id);
     }
 
     @Delete('album/:id')
     @HttpCode(204)
     deleteAlbum(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.deleteAlbum(id);
+        return this.FavoritesServ.deleteAlbum(id);
     }
 
     @Delete('artist/:id')
     @HttpCode(204)
     deleteArtist(@Param('id', ParseUUIDPipe) id: string) {
-        return this.favoritesService.deleteArtist(id);
+        return this.FavoritesServ.deleteArtist(id);
     }
 }

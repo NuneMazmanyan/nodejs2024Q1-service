@@ -1,103 +1,95 @@
-import {BadRequestException, ForbiddenException, Injectable, NotFoundException} from '@nestjs/common';
-import {CreateUserDto, UpdatePasswordDto, User} from "./user.model";
-import * as fs from "fs";
-import * as path from "path";
-import {v4 as uuidv4} from 'uuid';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdatePasswordDto } from './dto/update-user.dto';
+import { omit } from 'lodash';
+import {DBService} from "../db/db.service";
 
 @Injectable()
 export class UserService {
-    users: User[] = [];
-    usersDirPath: string = path.join(__dirname, 'users.json')
+    constructor(private readonly databaseService: DBService) {}
 
-    constructor() {
-        this.getUsers().then((users) => {
-            this.users = users || [];
-        });
+    async getUsers() {
+        const users = await this.databaseService.user.findMany();
+        return users;
     }
 
-    private async readUsers() {
-        let fileContent: User[] = [];
-        await fs.readFile(this.usersDirPath, (err, data)=>{
-            if (err) throw err;
-            fileContent.push(...JSON.parse(data.toString()).users)
-        })
-        return fileContent;
-    }
-
-    async getUsers(): Promise<User[]> {
-        return await this.readUsers();
-    }
-
-    getUserById(id: string) {
-        this.checkUserId(id);
-    }
-
-    createUser(userDto: CreateUserDto) {
+    async createUser(userDto: CreateUserDto) {
         if (!(userDto.login && userDto.password)) {
             throw new BadRequestException('Invalid data'); // 400
         }
+        const user = await this.databaseService.user.create({ data: userDto });
 
-        const newUser = {
-            id: uuidv4(),
-            login: userDto.login,
-            password: userDto.password,
-            version: 1,
-            createdAt: Number(Date.now()),
-            updatedAt: Number(Date.now()),
+        const newUser = omit(user, ['password']);
+        return {
+            ...newUser,
+            createdAt: new Date(newUser.createdAt).getTime(),
+            updatedAt: new Date(newUser.updatedAt).getTime(),
         };
-        this.users.push(newUser);
-        this.writeFile(JSON.stringify({users: this.users}))
-        return newUser;
     }
 
-    updatePassword(id: string, updateUserDto: UpdatePasswordDto) {
+    async getUser(id: string) {
+        const user = await this.databaseService.user.findUnique({
+            where: { id },
+        });
+        if (!user) {
+            throw new NotFoundException('This user does not exist'); // 404
+        }
+
+        return user;
+    }
+
+    async updateUser(id: string, updateUserDto: UpdatePasswordDto) {
         if (
             !(updateUserDto.oldPassword && updateUserDto.newPassword) ||
             typeof updateUserDto.oldPassword !== 'string' ||
             typeof updateUserDto.newPassword !== 'string'
         ) {
-            throw new BadRequestException('Invalid data');
+            throw new BadRequestException('Invalid data'); // 400
         }
 
-        const oldUser = this.checkUserId(id);
-        if (updateUserDto.oldPassword !== oldUser.password) {
-            throw new ForbiddenException('Old password is wrong');
-        }
-
-        const version = oldUser.version + 1;
-        const newUser = {
-            ...oldUser,
-            password: updateUserDto.newPassword,
-            version: version,
-            updatedAt: Number(Date.now()),
-        };
-
-        const index = this.users.findIndex((user) => user.id === id);
-        this.users[index] = newUser;
-
-        this.writeFile(JSON.stringify({users: this.users}))
-        return newUser;
-    }
-
-    deleteUser(id: string): string {
-        this.checkUserId(id);
-        this.users = this.users.filter(user => user.id !== id)
-        this.writeFile(JSON.stringify({users: this.users}))
-        return 'deleted successfully';
-    }
-
-    private writeFile(content: string) {
-        fs.writeFile(this.usersDirPath, content, (err) => {
-            if (err) throw err;
-        })
-    }
-
-    private checkUserId(id: string) {
-        const user = this.users.find((user) => user.id === id);
+        const user = await this.databaseService.user.findUnique({
+            where: { id },
+        });
         if (!user) {
-            throw new NotFoundException('User not exists');
+            throw new NotFoundException('This user does not exist'); // 404
         }
 
-        return user;
+        if (updateUserDto.oldPassword !== user.password) {
+            throw new ForbiddenException('Old password is wrong'); // 403
+        }
+
+        const version = user.version + 1;
+        const updatedUser = await this.databaseService.user.update({
+            where: { id },
+            data: {
+                password: updateUserDto.newPassword,
+                version: version,
+                updatedAt: new Date(),
+            },
+        });
+
+        const newUser = omit(updatedUser, ['password']);
+        return {
+            ...newUser,
+            createdAt: new Date(newUser.createdAt).getTime(),
+            updatedAt: new Date(newUser.updatedAt).getTime(),
+        };
+    }
+
+    async deleteUser(id: string) {
+        const user = await this.databaseService.user.findUnique({
+            where: { id },
+        });
+        if (!user) {
+            throw new NotFoundException('This user does not exist'); // 404 !
+        }
+        await this.databaseService.user.delete({
+            where: { id },
+        });
     }
 }
