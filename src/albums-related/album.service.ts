@@ -4,13 +4,14 @@ import * as path from "path";
 import {v4 as uuidv4} from 'uuid';
 import {Album} from "./album.model";
 import {CreateAlbumDto} from "./dto/create-album.dto";
+import {DBService} from "../db/db.service";
 
 @Injectable()
 export class AlbumService {
     albums: Album[] = [];
     albumsDirPath: string = path.join(__dirname, 'album.json')
 
-    constructor() {
+    constructor(private readonly databaseService: DBService) {
         this.getAlbums().then((albums) => {
             this.albums = albums || [];
         });

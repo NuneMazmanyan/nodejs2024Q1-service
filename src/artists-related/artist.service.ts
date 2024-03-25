@@ -5,13 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 import {Artist} from "./artist.model";
 import {CreateArtistDto} from "./dto/create-artist.dto";
 import {UpdateArtistDto} from "./dto/update-artist.dto";
+import {DBService} from "../db/db.service";
 
 @Injectable()
 export class ArtistService {
     artists: Artist[] = [];
     artistsDirPath: string = path.join(__dirname, 'artist.json')
 
-    constructor() {
+    constructor(private readonly databaseService: DBService) {
         this.getArtists().then((artists) => {
             this.artists = artists || [];
         });

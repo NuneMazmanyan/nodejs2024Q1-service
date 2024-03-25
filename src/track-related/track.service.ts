@@ -5,14 +5,15 @@ import {v4 as uuidv4} from 'uuid';
 import {Track} from "./track.model";
 import {CreateTrackDto} from "./dto/create-track.dto";
 import {UpdateTrackDto} from "./dto/update-track.dto";
-import {ITypeOperation} from "../types";
+import {ITypeOperation} from "../../types";
+import {DBService} from "../db/db.service";
 
 @Injectable()
 export class TrackService {
     tracks: Track[] = [];
     tracksDirPath: string = path.join(__dirname, 'track.json')
 
-    constructor() {
+    constructor(private readonly databaseService: DBService) {
         this.getTracks().then((tracks) => {
             this.tracks = tracks || [];
         });

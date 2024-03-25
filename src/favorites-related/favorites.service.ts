@@ -8,6 +8,7 @@ import {Track} from "../track-related/track.model";
 import {TrackService} from "../track-related/track.service";
 import {ArtistService} from "../artists-related/artist.service";
 import {AlbumService} from "../albums-related/album.service";
+import {DBService} from "../db/db.service";
 
 @Injectable()
 export class FavoritesService {
@@ -19,7 +20,8 @@ export class FavoritesService {
 
     constructor(private trackService: TrackService,
                 private artistService: ArtistService,
-                private albumService: AlbumService) {
+                private albumService: AlbumService,
+                private readonly databaseService: DBService,) {
         this.getFavorites().then((favs) => {
             this.favorites = favs;
         });
