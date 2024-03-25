@@ -1,44 +1,26 @@
-import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
-import * as fs from "fs";
-import * as path from "path";
-import {v4 as uuidv4} from 'uuid';
-import {Album} from "./album.model";
-import {CreateAlbumDto} from "./dto/create-album.dto";
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import {DBService} from "../db/db.service";
+import {CreateAlbumDto, UpdateAlbumDto} from "./dto/create-album.dto";
 
 @Injectable()
 export class AlbumService {
-    albums: Album[] = [];
-    albumsDirPath: string = path.join(__dirname, 'album.json')
+    constructor(private readonly databaseService: DBService) {}
 
-    constructor(private readonly databaseService: DBService) {
-        this.getAlbums().then((albums) => {
-            this.albums = albums || [];
-        });
+    async getAlbums() {
+        const album = await this.databaseService.album.findMany();
+        return album;
     }
 
-    private async readAlbums() {
-        let fileContent: Album[] = [];
-        await fs.readFile(this.albumsDirPath, (err, data) => {
-            if (err) throw err;
-            fileContent.push(...JSON.parse(data.toString()).albums)
-        })
-        return fileContent;
-    }
-
-    async getAlbums(): Promise<Album[]> {
-        return await this.readAlbums();
-    }
-
-    getAlbumById(id: string) {
-        this.checkAlbumId(id);
-    }
-
-    createAlbum(albumDto: CreateAlbumDto) {
+    async createAlbum(albumDto: CreateAlbumDto) {
         this.validateAlbumCreate(albumDto);
 
         const validatedArtistId =
-            albumDto.artistId && this.albums.find((album) => album.id === albumDto.artistId)
+            albumDto.artistId &&
+            (await this.databaseService.artist.findUnique({
+                where: { id: albumDto.artistId },
+            }))
                 ? albumDto.artistId
                 : null;
 
@@ -48,61 +30,74 @@ export class AlbumService {
             year: albumDto.year,
             artistId: validatedArtistId,
         };
-        this.albums.push(albumData);
-        this.writeFile(JSON.stringify({albums: this.albums}));
-        return albumData;
+        return this.databaseService.album.create({ data: albumData });
     }
 
-    updateAlbum(id: string, updateAlbumDto: CreateAlbumDto) {
-        this.checkAlbumId(id);
-        this.validateAlbumCreate(updateAlbumDto);
+    async getAlbum(id: string) {
+        const album = await this.databaseService.album.findUnique({
+            where: { id },
+        });
 
-        const index = this.albums.findIndex((album) => album.id === id);
-        const album = this.albums[index];
-        const validatedArtistId =
-            updateAlbumDto.artistId &&
-            this.albums.find((a) => a.id === updateAlbumDto.artistId)
-                ? updateAlbumDto.artistId
-                : null;
-        const newAlbumData = {
-            id: album.id,
-            name: updateAlbumDto.name || album.name,
-            year: updateAlbumDto.year || album.year,
-            artistId: validatedArtistId,
-        };
-
-        this.albums[index] = newAlbumData;
-        this.writeFile(JSON.stringify({albums: this.albums}))
-        return newAlbumData;
-    }
-
-    deleteAlbum(id: string): string {
-        this.checkAlbumId(id);
-        this.albums = this.albums.filter(track => track.id !== id)
-        this.writeFile(JSON.stringify({albums: this.albums}))
-        return 'deleted successfully';
-    }
-
-    private writeFile(content: string) {
-        fs.writeFile(this.albumsDirPath, content, (err) => {
-            if (err) throw err;
-        })
-    }
-
-    private checkAlbumId(id: string) {
-        const album = this.albums.find((album) => album.id === id);
         if (!album) {
-            throw new NotFoundException('album not exists');
+            throw new NotFoundException('This album is not exist'); // 404
         }
 
         return album;
+    }
+
+    async updateAlbum(id: string, updateAlbumDto: UpdateAlbumDto) {
+        this.validateAlbumCreate(updateAlbumDto);
+
+        const album = await this.databaseService.album.findUnique({
+            where: { id },
+        });
+
+        if (!album) {
+            throw new NotFoundException('This album is not exist'); // 404
+        }
+
+        let validatedArtistId = null;
+        if (updateAlbumDto.artistId) {
+            const artist = await this.databaseService.artist.findUnique({
+                where: { id: updateAlbumDto.artistId },
+            });
+            if (artist) {
+                validatedArtistId = updateAlbumDto.artistId;
+            }
+        }
+
+        const updatedAlbum = await this.databaseService.album.update({
+            where: { id },
+            data: {
+                name: updateAlbumDto.name || album.name,
+                year: updateAlbumDto.year || album.year,
+                artistId: validatedArtistId,
+            },
+        });
+        return updatedAlbum;
+    }
+
+    async deleteAlbum(id: string) {
+        const album = await this.databaseService.album.findUnique({
+            where: { id },
+        });
+
+        if (!album) {
+            throw new NotFoundException('This album is not exist'); // 404
+        }
+
+        await this.databaseService.track.updateMany({
+            where: { albumId: id },
+            data: { albumId: null },
+        });
+        return this.databaseService.album.delete({ where: { id } });
     }
 
     private validateAlbumCreate(albumDto: CreateAlbumDto) {
         const { name, artistId, year } = albumDto;
 
         if (!albumDto || typeof name !== 'string' || typeof year !== 'number') {
-            throw new BadRequestException('New album invalid');
+            throw new BadRequestException('New album invalid'); //400
         }
 
         if (typeof artistId !== 'string' && artistId !== null) {

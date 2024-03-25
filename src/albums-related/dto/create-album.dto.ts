@@ -11,3 +11,5 @@ export class CreateAlbumDto {
     @IsUUID('4')
     artistId: string | null;
 }
+
+export class UpdateAlbumDto extends CreateAlbumDto {}

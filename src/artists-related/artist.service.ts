@@ -1,115 +1,101 @@
-import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
-import * as fs from "fs";
-import * as path from "path";
-import { v4 as uuidv4 } from 'uuid';
-import {Artist} from "./artist.model";
-import {CreateArtistDto} from "./dto/create-artist.dto";
-import {UpdateArtistDto} from "./dto/update-artist.dto";
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
+import { CreateArtistDto } from './dto/create-artist.dto';
+import { UpdateArtistDto } from './dto/update-artist.dto';
 import {DBService} from "../db/db.service";
 
 @Injectable()
 export class ArtistService {
-    artists: Artist[] = [];
-    artistsDirPath: string = path.join(__dirname, 'artist.json')
+    constructor(private readonly databaseService: DBService) {}
 
-    constructor(private readonly databaseService: DBService) {
-        this.getArtists().then((artists) => {
-            this.artists = artists || [];
-        });
+    async getArtists() {
+        const artist = await this.databaseService.artist.findMany();
+        return artist;
     }
 
-    private async readArtists() {
-        let fileContent: Artist[] = [];
-        await fs.readFile(this.artistsDirPath, (err, data) => {
-            if (err) throw err;
-            fileContent.push(...JSON.parse(data.toString()).artists)
-        })
-        return fileContent;
-    }
-
-    async getArtists(): Promise<Artist[]> {
-        return await this.readArtists();
-    }
-
-    getArtistById(id: string) {
-        this.checkArtistId(id);
-    }
-
-    createArtist(artistDto: CreateArtistDto) {
+    async createArtist(artistDto: CreateArtistDto) {
         this.validateNameAndGrammy(artistDto);
 
-        const artistData = {
-            id: uuidv4(),
-            name: artistDto.name,
-            grammy: artistDto.grammy,
-        };
-        this.artists.push(artistData);
-        this.writeFile(JSON.stringify({artists: this.artists}))
-        return artistData;
+        const artist = await this.databaseService.artist.create({
+            data: artistDto,
+        });
+
+        return artist;
     }
 
-    updateArtist(id: string, updateArtistDto: UpdateArtistDto) {
-        this.checkArtistId(id);
+    async getArtist(id: string) {
+        const artist = await this.databaseService.artist.findUnique({
+            where: { id },
+        });
+        if (!artist) {
+            throw new NotFoundException('This artist does not exist'); // 404
+        }
+
+        return artist;
+    }
+
+    async updateArtist(id: string, updateArtistDto: UpdateArtistDto) {
+        const artist = await this.databaseService.artist.findUnique({
+            where: { id },
+        });
+        if (!artist) {
+            throw new NotFoundException('This artist does not exist'); // 404
+        }
+
         this.validateUpdateArtist(updateArtistDto);
 
-        const index = this.artists.findIndex((artist) => artist.id === id);
-        const artist = this.artists.find((artist) => artist.id === id);
+        const updatedArtist = await this.databaseService.artist.update({
+            where: { id },
+            data: updateArtistDto,
+        });
 
-        const newArtistData = {
-            ...artist,
-            name: updateArtistDto.name,
-            grammy: updateArtistDto.grammy,
-        };
-        try {
-            this.artists[index] = newArtistData;
-            this.writeFile(JSON.stringify({artists: this.artists}))
-            return newArtistData;
-        } catch (err) {
-            console.log(err);
-            return false;
+        return updatedArtist;
+    }
+
+    async deleteArtist(id: string) {
+        const artist = await this.databaseService.artist.findUnique({
+            where: { id },
+        });
+        if (!artist) {
+            throw new NotFoundException('This artist does not exist'); // 404
         }
+
+        await this.databaseService.album.updateMany({
+            where: { artistId: id },
+            data: { artistId: null },
+        });
+
+        await this.databaseService.track.updateMany({
+            where: { artistId: id },
+            data: { artistId: null },
+        });
+
+        await this.databaseService.artist.delete({
+            where: { id },
+        });
+        return 'The record is found and deleted';
     }
 
     private validateNameAndGrammy(createArtistDto: CreateArtistDto) {
-        const {name, grammy} = createArtistDto;
+        const { name, grammy } = createArtistDto;
 
         if (!(name && grammy)) {
-            throw new BadRequestException('Artist data is invalid');
+            throw new BadRequestException('Artist data is invalide'); //400
         }
     }
 
     private validateUpdateArtist(updateArtistDto: UpdateArtistDto) {
-        const {name, grammy} = updateArtistDto;
+        const { name, grammy } = updateArtistDto;
 
         if (
             (!name && !grammy) ||
             (name && typeof name !== 'string') ||
             (grammy && typeof grammy !== 'boolean')
         ) {
-            throw new BadRequestException('Artist data is invalid');
+            throw new BadRequestException('Artist data is invalide');
         }
-    }
-
-
-    deleteArtist(id: string): string {
-        this.checkArtistId(id);
-        this.artists = this.artists.filter(artist => artist.id !== id)
-        this.writeFile(JSON.stringify({artists: this.artists}))
-        return 'deleted successfully';
-    }
-
-    private writeFile(content: string) {
-        fs.writeFile(this.artistsDirPath, content, (err) => {
-            if (err) throw err;
-        })
-    }
-
-    private checkArtistId(id: string) {
-        const artist = this.artists.find((artist) => artist.id === id);
-        if (!artist) {
-            throw new NotFoundException('Artist not exists');
-        }
-
-        return artist;
     }
 }

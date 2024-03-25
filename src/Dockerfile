@@ -6,7 +6,7 @@ COPY package.json package-lock.json ./
 
 RUN npm install
 
-COPY . .
+COPY docker .
 
 FROM node:20.11-alpine as start
 

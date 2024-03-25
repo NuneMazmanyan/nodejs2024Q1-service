@@ -9,28 +9,28 @@ import {
     Post,
     Put,
 } from '@nestjs/common';
-import {CreateArtistDto} from "./dto/create-artist.dto";
-import {UpdateArtistDto} from "./dto/update-artist.dto";
-import {ArtistService} from "./artist.service";
+import { ArtistService } from './artist.service';
+import { CreateArtistDto } from './dto/create-artist.dto';
+import { UpdateArtistDto } from './dto/update-artist.dto';
 
 @Controller('artist')
 export class ArtistController {
-    constructor(private readonly artistService: ArtistService) {}
+    constructor(private readonly ArtistServ: ArtistService) {}
 
     @Get()
     getArtists() {
-        return this.artistService.getArtists();
+        return this.ArtistServ.getArtists();
     }
 
     @Get(':id')
     getArtist(@Param('id', ParseUUIDPipe) id: string) {
-        return this.artistService.getArtistById(id);
+        return this.ArtistServ.getArtist(id);
     }
 
     @Post()
     @HttpCode(201)
     create(@Body() artistDto: CreateArtistDto) {
-        return this.artistService.createArtist(artistDto);
+        return this.ArtistServ.createArtist(artistDto);
     }
 
     @Put(':id')
@@ -39,12 +39,12 @@ export class ArtistController {
         @Param('id', ParseUUIDPipe) id: string,
         @Body() updateArtistDto: UpdateArtistDto,
     ) {
-        return this.artistService.updateArtist(id, updateArtistDto);
+        return this.ArtistServ.updateArtist(id, updateArtistDto);
     }
 
     @Delete(':id')
     @HttpCode(204)
     deleteArtist(@Param('id', ParseUUIDPipe) id: string) {
-        return this.artistService.deleteArtist(id);
+        return this.ArtistServ.deleteArtist(id);
     }
 }
